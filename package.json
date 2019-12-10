@@ -1,0 +1,36 @@
+{
+  "name": "eye-recommender",
+  "author": "Erik Hoffman",
+  "description": "A Recommendation Engine built on Node.js utilizing Redis",
+  "version": "0.0.1",
+  "dependencies": {
+    "async": "~2.1.x",
+    "redis": "~2.6.x",
+    "underscore": "~1.8.x",
+    "util-promisifyall": "^1.0.6"
+  },
+  "main": "./index.js",
+  "engines": {
+    "node": ">= 6.0.0"
+  },
+  "keywords": [
+    "recommend",
+    "recommended",
+    "recommendation"
+  ],
+  "devDependencies": {
+    "@babel/cli": "^7.7.5",
+    "@babel/core": "^7.7.5",
+    "@babel/preset-env": "^7.7.6",
+    "@types/jest": "^24.0.23",
+    "babel-eslint": "^10.0.3",
+    "babel-jest": "^24.9.0",
+    "babel-loader": "^8.0.6",
+    "eslint": "^6.7.2",
+    "eslint-config-prettier": "^6.7.0",
+    "eslint-plugin-jest": "^23.1.1",
+    "eslint-plugin-prettier": "^3.1.1",
+    "jest": "^24.9.0",
+    "prettier": "^1.19.1"
+  }
+}
