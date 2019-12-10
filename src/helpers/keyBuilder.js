@@ -9,57 +9,57 @@ class KeyBuilder {
   }
 
   joinKey() {
-    this.key = [config.className].concat(this.keyArr).join(':');
+    this.key = [config.className].concat(this.keyArr).join(":");
     return this.key;
   }
 
   userLikedSet(userId) {
-    this.keyArr = [USER, userId, 'liked'];
+    this.keyArr = [USER, userId, "liked"];
     return this.joinKey();
   }
 
   userDislikedSet(userId) {
-    this.keyArr = [USER, userId, 'disliked'];
+    this.keyArr = [USER, userId, "disliked"];
     return this.joinKey();
   }
 
   itemLikedBySet(itemId) {
-    this.keyArr = [ITEM, itemId, 'liked'];
+    this.keyArr = [ITEM, itemId, "liked"];
     return this.joinKey();
   }
 
   itemDislikedBySet(itemId) {
-    this.keyArr = [ITEM, itemId, 'disliked'];
+    this.keyArr = [ITEM, itemId, "disliked"];
     return this.joinKey();
   }
 
   mostLiked() {
-    this.keyArr = ['mostLiked'];
+    this.keyArr = ["mostLiked"];
     return this.joinKey();
   }
 
   mostDisliked() {
-    this.keyArr = ['mostDisliked'];
+    this.keyArr = ["mostDisliked"];
     return this.joinKey();
   }
 
   recommendedZSet(userId) {
-    this.keyArr = [USER, userId, 'recommendedZSet'];
+    this.keyArr = [USER, userId, "recommendedZSet"];
     return this.joinKey();
   }
 
   scoreboardZSet() {
-    this.keyArr = ['scoreboard'];
+    this.keyArr = ["scoreboard"];
     return this.joinKey();
   }
 
   similarityZSet(userId) {
-    this.keyArr = [USER, userId, 'similarityZSet'];
+    this.keyArr = [USER, userId, "similarityZSet"];
     return this.joinKey();
   }
 
   tempAllLikedSet(userId) {
-    this.keyArr = [USER, userId, 'tempAllLikedSet'];
+    this.keyArr = [USER, userId, "tempAllLikedSet"];
     return this.joinKey();
   }
 }

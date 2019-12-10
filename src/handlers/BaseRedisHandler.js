@@ -9,33 +9,11 @@ class BaseRedisHandler {
   }
 
   async updateSequence(userId, itemId) {
-    const updateWilson = true;
-    this.updateSimilarityFor(userId, async () => {
-      await Promise.all([
-        this.updateWilsonScore(itemId, () => {}),
-        this.updateRecommendationsFor(userId, () => {})
-      ]);
-    });
-    // return new Promise((resolve, reject) => {
-    //   this.updateSimilarityFor(userId, () => {
-    //     async.parallel([
-    //       (cb) => {
-    //         this.updateWilsonScore(itemId, () => {
-    //           cb(null);
-    //         });
-    //       },
-    //       (cb) => {
-    //         this.updateRecommendationsFor(userId, () => {
-    //           cb(null);
-    //         });
-    //       }
-    //     ],
-    //     err => {
-    //       if (err) { console.log("error", err); }
-    //       resolve();
-    //     });
-    //   });
-    // });
+    await this.updateSimilarityFor(userId);
+    await Promise.all([
+      this.updateWilsonScore(itemId, () => {}),
+      this.updateRecommendationsFor(userId, () => {})
+    ]);
   }
 
   async changeRating({
@@ -84,40 +62,9 @@ class BaseRedisHandler {
       return;
     }
     return;
-
-    // return new Promise((resolve, reject) => {
-    //   Promise.resolve().then(() => {
-    //     // check if the rating is already stored
-    //     return this.redisClient.sismemberAsync(feelingItemSet, userId);
-    //   }).then((result) => {
-    //     // only increment the most feeling set if it doesn't already exist
-    //     if (result === 0 && !removeRating) {
-    //       this.redisClient.zincrby(mostFeelingSet, 1, itemId);
-    //     } else if (result > 0 && removeRating) {
-    //       this.redisClient.zincrby(mostFeelingSet, -1, itemId);
-    //     }
-    //     return removeRating ? this.redisClient.sremAsync(feelingUserSet, itemId) :
-    //       this.redisClient.saddAsync(feelingUserSet, itemId);
-    //   }).then(() => {
-    //     return removeRating ? this.redisClient.sremAsync(feelingItemSet, userId) :
-    //       this.redisClient.saddAsync(feelingItemSet, userId);
-    //   }).then(() => {
-    //     return this.redisClient.sismemberAsync(feelingItemSet, userId);
-    //   }).then((result) => {
-    //     // only fire update sequence if requested by the user
-    //     // and there are results to compare
-    //     if (updateRecommendations && result > 0) {
-    //       this.updateSequence(userId, itemId).then(() => {
-    //         resolve();
-    //       });
-    //     } else {
-    //       resolve();
-    //     }
-    //   });
-    // });
   }
 
-  jaccardCoefficient(userId1, userId2, callback) {
+  async jaccardCoefficient(userId1, userId2) {
     let similarity = 0;
     let finalJaccardScore = 0;
     let ratedInCommon = 0;
@@ -127,122 +74,78 @@ class BaseRedisHandler {
     const user2LikedSet = keyBuilder.userLikedSet(userId2);
     const user2DislikedSet = keyBuilder.userDislikedSet(userId2);
 
-    // retrieving a set of the users likes incommon
-    this.redisClient.sinter(user1LikedSet, user2LikedSet, (err, results1) => {
-      // retrieving a set of the users dislike incommon
-      this.redisClient.sinter(
-        user1DislikedSet,
-        user2DislikedSet,
-        (err, results2) => {
-          // retrieving a set of the users like and dislikes that they disagree on
-          this.redisClient.sinter(
-            user1LikedSet,
-            user2DislikedSet,
-            (err, results3) => {
-              // retrieving a set of the users like and dislikes that they disagree on
-              this.redisClient.sinter(
-                user1DislikedSet,
-                user2LikedSet,
-                (err, results4) => {
-                  // calculating the sum of the similarities minus the sum of the disagreements
-                  similarity =
-                    results1.length +
-                    results2.length -
-                    results3.length -
-                    results4.length;
-                  // calculating the number of movies rated incommon
-                  ratedInCommon =
-                    results1.length +
-                    results2.length +
-                    results3.length +
-                    results4.length;
-                  // calculating the the modified jaccard score. similarity / num of comparisons made incommon
-                  finalJaccardScore = similarity / ratedInCommon;
-                  // calling the callback function passed to jaccard with the new score
-                  callback(finalJaccardScore);
-                }
-              );
-            }
-          );
-        }
-      );
-    });
+    const results1 = await this.redisClient.sinterAsync(
+      user1LikedSet,
+      user2LikedSet
+    );
+    const results2 = await this.redisClient.sinterAsync(
+      user1DislikedSet,
+      user2DislikedSet
+    );
+    const results3 = await this.redisClient.sinterAsync(
+      user1LikedSet,
+      user2DislikedSet
+    );
+    const results4 = await this.redisClient.sinterAsync(
+      user1DislikedSet,
+      user2LikedSet
+    );
+
+    similarity =
+      results1.length + results2.length - results3.length - results4.length;
+
+    ratedInCommon =
+      results1.length + results2.length + results3.length + results4.length;
+
+    finalJaccardScore = similarity / ratedInCommon;
+    return finalJaccardScore;
   }
 
   // this function updates the similarity for one user versus all others. at scale this probably needs to be refactored to compare a user
   // against clusters of users instead of against all. every comparison will be a value between -1 and 1 representing simliarity.
   // -1 is exact opposite, 1 is exactly the same.
-  updateSimilarityFor(userId, cb) {
+  async updateSimilarityFor(userId) {
     // turning the userId into a string. depending on the db they might send an object, in which it won't compare properly when comparing
     // to other users
     userId = String(userId);
     // initializing variables
-    let userRatedItemIds, itemLiked, itemDisliked, itemLikeDislikeKeys;
+    let itemLiked, itemDisliked, itemLikeDislikeKeys;
     // setting the redis key for the user's similarity set
     const similarityZSet = keyBuilder.similarityZSet(userId);
-    // creating a combined set with the all of a users likes and dislikes
-    this.redisClient.sunion(
+
+    const userRatedItemIds = await this.redisClient.sunionAsync(
       keyBuilder.userLikedSet(userId),
-      keyBuilder.userDislikedSet(userId),
-      (err, userRatedItemIds) => {
-        // if they have rated anything
-        if (userRatedItemIds.length > 0) {
-          // creating a list of redis keys to look up all of the likes and dislikes for a given set of items
-          itemLikeDislikeKeys = _.map(userRatedItemIds, (itemId, key) => {
-            // key for that item being liked
-            itemLiked = keyBuilder.itemLikedBySet(itemId);
-            // key for the item being disliked
-            itemDisliked = keyBuilder.itemDislikedBySet(itemId);
-            // returning an array of those keys
-            return [itemLiked, itemDisliked];
-          });
-        }
-        // flattening the array of all the likes/dislikes for the items a user rated
-        itemLikeDislikeKeys = _.flatten(itemLikeDislikeKeys);
-        // builds one set of all the users who liked and disliked the same items
-        this.redisClient.sunion(
-          itemLikeDislikeKeys,
-          (err, otherUserIdsWhoRated) => {
-            // running in async parallel, going through the array of user ids who also rated the same things
-            async.each(
-              otherUserIdsWhoRated,
-              // running a function on each item in the list
-              (otherUserId, callback) => {
-                // if there is only one other user or the other user is the same user
-                if (
-                  otherUserIdsWhoRated.length === 1 ||
-                  userId === otherUserId
-                ) {
-                  // then call the callback and exciting the similarity check
-                  callback();
-                }
-                // if the userid is not the same as the user
-                if (userId !== otherUserId) {
-                  // calculate the jaccard coefficient for similarity. it will return a value between -1 and 1 showing the two users
-                  // similarity
-                  this.jaccardCoefficient(userId, otherUserId, result => {
-                    // with the returned similarity score, add it to a sorted set named above
-                    this.redisClient.zadd(
-                      similarityZSet,
-                      result,
-                      otherUserId,
-                      err => {
-                        // call the async callback function once finished to indicate that the process is finished
-                        callback();
-                      }
-                    );
-                  });
-                }
-              },
-              // once all the async comparisons have been made, call the final callback based to the original function
-              function(err) {
-                cb();
-              }
-            );
-          }
+      keyBuilder.userDislikedSet(userId)
+    );
+    // if they have rated anything
+    if (userRatedItemIds.length > 0) {
+      // creating a list of redis keys to look up all of the likes and dislikes for a given set of items
+      itemLikeDislikeKeys = _.map(userRatedItemIds, (itemId, key) => {
+        // key for that item being liked
+        itemLiked = keyBuilder.itemLikedBySet(itemId);
+        // key for the item being disliked
+        itemDisliked = keyBuilder.itemDislikedBySet(itemId);
+        // returning an array of those keys
+        return [itemLiked, itemDisliked];
+      });
+    }
+    // flattening the array of all the likes/dislikes for the items a user rated
+    itemLikeDislikeKeys = _.flatten(itemLikeDislikeKeys);
+
+    const otherUserIdsWhoRated = await this.redisClient.sunionAsync(
+      itemLikeDislikeKeys
+    );
+    async.each(otherUserIdsWhoRated, async otherUserId => {
+      if (otherUserIdsWhoRated.length === 1 || userId === otherUserId) return;
+      if (userId != otherUserId) {
+        const jaccardScore = await this.jaccardCoefficient(userId, otherUserId);
+        await this.redisClient.zaddAsync(
+          similarityZSet,
+          jaccardScore,
+          otherUserId
         );
       }
-    );
+    });
   }
 
   predictFor(userId, itemId) {
