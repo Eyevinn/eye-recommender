@@ -3,11 +3,8 @@
   "author": "Erik Hoffman",
   "description": "A Recommendation Engine built on Node.js utilizing Redis",
   "version": "0.0.1",
-  "dependencies": {
-    "async": "~2.1.x",
-    "redis": "~2.6.x",
-    "underscore": "~1.8.x",
-    "util-promisifyall": "^1.0.6"
+  "scripts": {
+    "test": "jest"
   },
   "main": "./index.js",
   "engines": {
@@ -18,6 +15,12 @@
     "recommended",
     "recommendation"
   ],
+  "dependencies": {
+    "async": "^3.1.0",
+    "redis": "~2.6.x",
+    "underscore": "~1.8.x",
+    "util-promisifyall": "^1.0.6"
+  },
   "devDependencies": {
     "@babel/cli": "^7.7.5",
     "@babel/core": "^7.7.5",

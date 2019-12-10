@@ -11,7 +11,7 @@ class BaseRedisHandler {
   async updateSequence(userId, itemId) {
     await this.updateSimilarityFor(userId);
     await Promise.all([
-      this.updateWilsonScore(itemId, () => {}),
+      this.updateWilsonScore(itemId),
       this.updateRecommendationsFor(userId, () => {})
     ]);
   }
@@ -48,20 +48,18 @@ class BaseRedisHandler {
     }
 
     (await removeRating)
-      ? this.redisClient.sremAsync(feelingUserSet, itemId)
-      : this.redisClient.saddAsync(feelingUserSet, itemId);
+      ? await this.redisClient.sremAsync(feelingUserSet, itemId)
+      : await this.redisClient.saddAsync(feelingUserSet, itemId);
 
     (await removeRating)
-      ? this.redisClient.sremAsync(feelingItemSet, userId)
-      : this.redisClient.saddAsync(feelingItemSet, userId);
+      ? await this.redisClient.sremAsync(feelingItemSet, userId)
+      : await this.redisClient.saddAsync(feelingItemSet, userId);
 
     const done = await this.redisClient.sismemberAsync(feelingItemSet, userId);
 
     if (updateRecommendations && done) {
       await this.updateSequence(userId, itemId);
-      return;
     }
-    return;
   }
 
   async jaccardCoefficient(userId1, userId2) {
@@ -101,37 +99,23 @@ class BaseRedisHandler {
     return finalJaccardScore;
   }
 
-  // this function updates the similarity for one user versus all others. at scale this probably needs to be refactored to compare a user
-  // against clusters of users instead of against all. every comparison will be a value between -1 and 1 representing simliarity.
-  // -1 is exact opposite, 1 is exactly the same.
   async updateSimilarityFor(userId) {
-    // turning the userId into a string. depending on the db they might send an object, in which it won't compare properly when comparing
-    // to other users
     userId = String(userId);
-    // initializing variables
     let itemLiked, itemDisliked, itemLikeDislikeKeys;
-    // setting the redis key for the user's similarity set
     const similarityZSet = keyBuilder.similarityZSet(userId);
 
     const userRatedItemIds = await this.redisClient.sunionAsync(
       keyBuilder.userLikedSet(userId),
       keyBuilder.userDislikedSet(userId)
     );
-    // if they have rated anything
     if (userRatedItemIds.length > 0) {
-      // creating a list of redis keys to look up all of the likes and dislikes for a given set of items
       itemLikeDislikeKeys = _.map(userRatedItemIds, (itemId, key) => {
-        // key for that item being liked
         itemLiked = keyBuilder.itemLikedBySet(itemId);
-        // key for the item being disliked
         itemDisliked = keyBuilder.itemDislikedBySet(itemId);
-        // returning an array of those keys
         return [itemLiked, itemDisliked];
       });
     }
-    // flattening the array of all the likes/dislikes for the items a user rated
     itemLikeDislikeKeys = _.flatten(itemLikeDislikeKeys);
-
     const otherUserIdsWhoRated = await this.redisClient.sunionAsync(
       itemLikeDislikeKeys
     );
@@ -148,7 +132,7 @@ class BaseRedisHandler {
     });
   }
 
-  predictFor(userId, itemId) {
+  async predictFor(userId, itemId) {
     userId = String(userId);
     itemId = String(itemId);
     let finalSimilaritySum = 0.0;
@@ -157,43 +141,27 @@ class BaseRedisHandler {
     const likedBySet = keyBuilder.itemLikedBySet(itemId);
     const dislikedBySet = keyBuilder.itemDislikedBySet(itemId);
 
-    return new Promise((resolve, reject) => {
-      this.similaritySum(similarityZSet, likedBySet, result1 => {
-        this.similaritySum(similarityZSet, dislikedBySet, result2 => {
-          finalSimilaritySum = result1 - result2;
-          this.redisClient.scard(likedBySet, (err, likedByCount) => {
-            this.redisClient.scard(dislikedBySet, (err, dislikedByCount) => {
-              prediction =
-                finalSimilaritySum / parseFloat(likedByCount + dislikedByCount);
-              if (isFinite(prediction)) {
-                resolve(prediction);
-              } else {
-                resolve(0.0);
-              }
-            });
-          });
-        });
-      });
-    });
+    const [result1, result2] = await Promise.all([
+      this.similaritySum(similarityZSet, likedBySet),
+      this.similaritySum(similarityZSet, dislikedBySet)
+    ]);
+    finalSimilaritySum = result1 - result2;
+    const likedbyCount = await this.redisClient.scardAsync(likedBySet);
+    const dislikedByCount = await this.redisClient.scardAsync(dislikedBySet);
+    prediction =
+      finalSimilaritySum / parseFloat(likedbyCount + dislikedByCount);
+    return prediction;
   }
 
-  similaritySum(simSet, compSet, cb) {
+  async similaritySum(simSet, compSet) {
     let similarSum = 0.0;
-    this.redisClient.smembers(compSet, (err, userIds) => {
-      async.each(
-        userIds,
-        (userId, callback) => {
-          this.redisClient.zscore(simSet, userId, (err, zScore) => {
-            const newScore = parseFloat(zScore) || 0.0;
-            similarSum += newScore;
-            callback();
-          });
-        },
-        err => {
-          cb(similarSum);
-        }
-      );
+    const userIds = await this.redisClient.smembersAsync(compSet);
+    async.each(userIds, async userId => {
+      const zScore = await this.redisClient.zscoreAsync(simSet, userId);
+      const newScore = parseFloat(zScore) || 0.0;
+      similarSum += newScore;
     });
+    return similarSum;
   }
 
   // after the similarity is updated for the user, the users recommendations are updated
@@ -246,12 +214,10 @@ class BaseRedisHandler {
                     // with the array of items that user has not yet rated, iterate through all of them and predict what the current user would rate it
                     async.each(
                       notYetRatedItems,
-                      (itemId, callback) => {
-                        this.predictFor(userId, itemId).then(score => {
-                          // push the score and item to the score map array.
-                          scoreMap.push([score, itemId]);
-                          callback();
-                        });
+                      async itemId => {
+                        const score = await this.predictFor(userId, itemId);
+                        // push the score and item to the score map array.
+                        scoreMap.push([score, itemId]);
                       },
                       // using score map which is an array of what the current user would rate all the unrated items,
                       // add them to that users sorted recommended set
@@ -305,7 +271,7 @@ class BaseRedisHandler {
 
   // the wilson score is a proxy for 'best rated'. it represents the best finding the best ratio of likes and also eliminating
   // outliers. the wilson score is a value between 0 and 1.
-  updateWilsonScore(itemId, callback) {
+  async updateWilsonScore(itemId) {
     // creating the redis keys for scoreboard and to get the items liked and disliked sets
     const scoreboard = keyBuilder.scoreboardZSet();
     const likedBySet = keyBuilder.itemLikedBySet(itemId);
@@ -315,38 +281,30 @@ class BaseRedisHandler {
     // initializing variables to calculate wilson score
     let n, pOS, score;
     // getting the liked count for the item
-    this.redisClient.scard(likedBySet, (err, likedResults) => {
-      // getting the disliked count for the item
-      this.redisClient.scard(dislikedBySet, (err, dislikedResults) => {
-        // if the total count is greater than zero
-        if (likedResults + dislikedResults > 0) {
-          // set n to the sum of the total ratings for the item
-          n = likedResults + dislikedResults;
-          // set pOS to the num of liked results divided by the number rated
-          // pOS represents the proportion of successes or likes in this case
-          pOS = likedResults / parseFloat(n);
-          // try the following equation
-          try {
-            // calculating the wilson score
-            // http://www.evanmiller.org/how-not-to-sort-by-average-rating.html
-            score =
-              (pOS +
-                (z * z) / (2 * n) -
-                z * Math.sqrt((pOS * (1 - pOS) + (z * z) / (4 * n)) / n)) /
-              (1 + (z * z) / n);
-          } catch (e) {
-            // if an error occurs, set the score to 0.0 and console log the error message.
-            console.log(e.name + ": " + e.message);
-            score = 0.0;
-          }
-          // add that score to the overall scoreboard. if that item already exists, the score will be updated.
-          this.redisClient.zadd(scoreboard, score, itemId, err => {
-            // call the final callback sent to the initial function.
-            callback();
-          });
-        }
-      });
-    });
+    const likedResults = await this.redisClient.scardAsync(likedBySet);
+    const dislikedResults = await this.redisClient.scardAsync(dislikedBySet);
+    if (likedResults + dislikedResults > 0) {
+      // set n to the sum of the total ratings for the item
+      n = likedResults + dislikedResults;
+      // set pOS to the num of liked results divided by the number rated
+      // pOS represents the proportion of successes or likes in this case
+      pOS = likedResults / parseFloat(n);
+      // try the following equation
+      try {
+        // calculating the wilson score
+        // http://www.evanmiller.org/how-not-to-sort-by-average-rating.html
+        score =
+          (pOS +
+            (z * z) / (2 * n) -
+            z * Math.sqrt((pOS * (1 - pOS) + (z * z) / (4 * n)) / n)) /
+          (1 + (z * z) / n);
+      } catch (e) {
+        // if an error occurs, set the score to 0.0 and console log the error message.
+        console.log(e.name + ": " + e.message);
+        score = 0.0;
+      }
+      await this.redisClient.zaddAsync(scoreboard, score, itemId);
+    }
   }
 }
 
