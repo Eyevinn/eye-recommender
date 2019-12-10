@@ -4,7 +4,6 @@ const StatisticsHandler = require("./handlers/StatisticsHandler");
 
 class EyeRecommender {
   constructor() {
-    console.log("EyeRecommender constructor");
     this.connect();
   }
 
@@ -12,6 +11,6 @@ class EyeRecommender {
     this.input = new InputHandler({ redisClient });
     this.statistics = new StatisticsHandler({ redisClient });
   }
-};
+}
 
 module.exports = new EyeRecommender();

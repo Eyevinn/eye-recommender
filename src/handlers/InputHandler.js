@@ -14,14 +14,22 @@ class InputHandler extends BaseRedisHandler {
   }
 
   unlike(userId, itemId) {
-    return super.changeRating({ userId, itemId, liked: true, removeRating: true });
+    return super.changeRating({
+      userId,
+      itemId,
+      liked: true,
+      removeRating: true
+    });
   }
 
   undislike(userId, itemId) {
-    return super.changeRating({ userId, itemId, liked: false, removeRating: true });
+    return super.changeRating({
+      userId,
+      itemId,
+      liked: false,
+      removeRating: true
+    });
   }
-
-
 }
 
 module.exports = InputHandler;
