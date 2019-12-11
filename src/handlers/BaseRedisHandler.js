@@ -12,7 +12,7 @@ class BaseRedisHandler {
     await this.updateSimilarityFor(userId);
     await Promise.all([
       this.updateWilsonScore(itemId),
-      this.updateRecommendationsFor(userId, () => {})
+      this.updateRecommendationsFor(userId)
     ]);
   }
 
@@ -169,7 +169,7 @@ class BaseRedisHandler {
   // names of the items and the score is what eyeRecommender estimates that user would rate it
   // the values are generally not going to be -1 or 1 exactly because there isn't 100%
   // certainty.
-  updateRecommendationsFor(userId, cb) {
+  async updateRecommendationsFor(userId) {
     // turning the user input into a string so it can be compared properly
     userId = String(userId);
     // creating two blank arrays
@@ -179,94 +179,78 @@ class BaseRedisHandler {
     const tempAllLikedSet = keyBuilder.tempAllLikedSet(userId);
     const similarityZSet = keyBuilder.similarityZSet(userId);
     const recommendedZSet = keyBuilder.recommendedZSet(userId);
-    // returns an array of the users that are most similar within k nearest neighbors
-    this.redisClient.zrevrange(
+
+    const mostSimilarUserIds = await this.redisClient.zrevrangeAsync(
       similarityZSet,
       0,
-      config.nearestNeighbors - 1,
-      (err, mostSimilarUserIds) => {
-        // returns an array of the users that are least simimilar within k nearest neighbors
-        this.redisClient.zrange(
-          similarityZSet,
-          0,
-          config.nearestNeighbors - 1,
-          (err, leastSimilarUserIds) => {
-            // iterate through the user ids to create the redis keys for all those users likes
-            _.each(mostSimilarUserIds, (usrId, key) => {
-              setsToUnion.push(keyBuilder.userLikedSet(usrId));
-            });
-            // if you want to factor in the least similar least likes, you change this in config
-            // left it off because it was recommending items that every disliked universally
-            _.each(leastSimilarUserIds, (usrId, key) => {
-              setsToUnion.push(keyBuilder.userDislikedSet(usrId));
-            });
-            // if there is at least one set in the array, continue
-            if (setsToUnion.length > 0) {
-              setsToUnion.unshift(tempAllLikedSet);
-              this.redisClient.sunionstore(setsToUnion, err => {
-                // using the new array of all the items that were liked by people similar and disliked by people opposite, create a new set with all the
-                // items that the current user hasn't already rated
-                this.redisClient.sdiff(
-                  tempAllLikedSet,
-                  keyBuilder.userLikedSet(userId),
-                  keyBuilder.userDislikedSet(userId),
-                  (err, notYetRatedItems) => {
-                    // with the array of items that user has not yet rated, iterate through all of them and predict what the current user would rate it
-                    async.each(
-                      notYetRatedItems,
-                      async itemId => {
-                        const score = await this.predictFor(userId, itemId);
-                        // push the score and item to the score map array.
-                        scoreMap.push([score, itemId]);
-                      },
-                      // using score map which is an array of what the current user would rate all the unrated items,
-                      // add them to that users sorted recommended set
-                      err => {
-                        this.redisClient.del(recommendedZSet, err => {
-                          async.each(
-                            scoreMap,
-                            (scorePair, callback) => {
-                              this.redisClient.zadd(
-                                recommendedZSet,
-                                scorePair[0],
-                                scorePair[1],
-                                err => {
-                                  callback();
-                                }
-                              );
-                            },
-                            // after all the additions have been made to the recommended set,
-                            err => {
-                              this.redisClient.del(tempAllLikedSet, err => {
-                                this.redisClient.zcard(
-                                  recommendedZSet,
-                                  (err, length) => {
-                                    this.redisClient.zremrangebyrank(
-                                      recommendedZSet,
-                                      0,
-                                      length - config.numOfRecsStore - 1,
-                                      err => {
-                                        cb();
-                                      }
-                                    );
-                                  }
-                                );
-                              });
-                            }
-                          );
-                        });
-                      }
+      config.nearestNeighbors - 1
+    );
+    const leastSimilarUserIds = await this.redisClient.zrangeAsync(
+      similarityZSet,
+      0,
+      config.nearestNeighbors - 1
+    );
+
+    // iterate through the user ids to create the redis keys for all those users likes
+    _.each(mostSimilarUserIds, usrId => {
+      setsToUnion.push(keyBuilder.userLikedSet(usrId));
+    });
+    // if you want to factor in the least similar least likes, you change this in config
+    // left it off because it was recommending items that every disliked universally
+    _.each(leastSimilarUserIds, usrId => {
+      setsToUnion.push(keyBuilder.userDislikedSet(usrId));
+    });
+    // if there is at least one set in the array, continue
+    if (setsToUnion.length > 0) {
+      setsToUnion.unshift(tempAllLikedSet);
+      await this.redisClient.sunionstoreAsync(setsToUnion);
+      const notYetRatedItems = await this.redisClient.sdiffAsync(
+        tempAllLikedSet,
+        keyBuilder.userLikedSet(userId),
+        keyBuilder.userDislikedSet(userId)
+      );
+      async.each(
+        notYetRatedItems,
+        async itemId => {
+          const score = await this.predictFor(userId, itemId);
+          // push the score and item to the score map array.
+          scoreMap.push([score, itemId]);
+        },
+        async err => {
+          const del = await this.redisClient.delAsync(recommendedZSet);
+          if (!del) {
+            async.each(
+              scoreMap,
+              async scorePair => {
+                const add = await this.redisClient.zaddAsync(
+                  recommendedZSet,
+                  scorePair[0],
+                  scorePair[1]
+                );
+                if (!add) return;
+              },
+              // after all the additions have been made to the recommended set,
+              async err => {
+                const del = await this.redisClient.delAsync(tempAllLikedSet);
+                if (!del) {
+                  const length = await this.redisClient.zcardAsync(
+                    recommendedZSet
+                  );
+                  if (length) {
+                    await this.redisClient.zremrangebyrankAsync(
+                      recommendedZSet,
+                      0,
+                      length - config.numOfRecsStore - 1,
                     );
                   }
-                );
-              });
-            } else {
-              cb();
-            }
+                  return;
+                }
+              }
+            );
           }
-        );
-      }
-    );
+        }
+      );
+    }
   }
 
   // the wilson score is a proxy for 'best rated'. it represents the best finding the best ratio of likes and also eliminating
