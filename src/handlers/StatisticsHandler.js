@@ -6,164 +6,106 @@ class StatisticsHandler extends BaseRedisHandler {
     super({ redisClient });
   }
 
-  recommendFor(userId, numberOfRecs = 10) {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrevrangeAsync(keyBuilder.recommendedZSet(userId), 0, numberOfRecs)
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async recommendFor(userId, numberOfRecs = 10) {
+    return await this.redisClient.zrevrangeAsync(
+      keyBuilder.recommendedZSet(userId),
+      0,
+      numberOfRecs
+    );
   }
 
-  bestRated() {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrevrangeAsync(keyBuilder.scoreboardZSet(), 0, -1)
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async bestRated() {
+    return await this.redisClient.zrevrangeAsync(
+      keyBuilder.scoreboardZSet(),
+      0,
+      -1
+    );
   }
 
-  worstRated() {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrangeAsync(keyBuilder.scoreboardZSet(), 0, -1)
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async worstRated() {
+    return await this.redisClient.zrangeAsync(
+      keyBuilder.scoreboardZSet(),
+      0,
+      -1
+    );
   }
 
-  bestRatedWithScores(numOfRatings = 10) {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrevrangeAsync(
-          keyBuilder.scoreboardZSet(),
-          0,
-          numOfRatings,
-          "withscores"
-        )
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async bestRatedWithScores(numOfRatings = 10) {
+    return await this.redisClient.zrevrangeAsync(
+      keyBuilder.scoreboardZSet(),
+      0,
+      numOfRatings,
+      "withscores"
+    );
   }
 
-  mostLiked() {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrevrangeAsync(keyBuilder.mostLiked(), 0, -1)
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async mostLiked() {
+    return await this.redisClient.zrevrangeAsync(keyBuilder.mostLiked(), 0, -1);
   }
 
-  mostDisliked() {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrevrangeAsync(keyBuilder.mostDisliked(), 0, -1)
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async mostDisliked() {
+    return await this.redisClient.zrevrangeAsync(
+      keyBuilder.mostDisliked(),
+      0,
+      -1
+    );
   }
 
-  usersWhoLikedAlsoLiked(itemId) {}
-
-  mostSimilarUsers(userId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrevrangeAsync(keyBuilder.similarityZSet(userId), 0, -1)
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async mostSimilarUsers(userId) {
+    return await this.redisClient.zrevrangeAsync(
+      keyBuilder.similarityZSet(userId),
+      0,
+      -1
+    );
   }
 
-  leastSimilarUsers(userId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .zrangeAsync(keyBuilder.similarityZSet(userId), 0, -1)
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async leastSimilarUsers(userId) {
+    return await this.redisClient.zrangeAsync(
+      keyBuilder.similarityZSet(userId),
+      0,
+      -1
+    );
   }
 
-  likedBy(itemId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .smembersAsync(keyBuilder.itemLikedBySet(itemId))
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async likedBy(itemId) {
+    return await this.redisClient.smembersAsync(
+      keyBuilder.itemLikedBySet(itemId)
+    );
   }
 
-  likedCount(itemId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .scardAsync(keyBuilder.itemLikedBySet(itemId))
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async likedCount(itemId) {
+    return await this.redisClient.scardAsync(keyBuilder.itemLikedBySet(itemId));
   }
 
-  dislikedBy(itemId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .smembersAsync(keyBuilder.itemDislikedBySet(itemId))
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async dislikedBy(itemId) {
+    return await this.redisClient.smembersAsync(
+      keyBuilder.itemDislikedBySet(itemId)
+    );
   }
 
-  dislikedCount(itemId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .scardAsync(keyBuilder.itemDislikedBySet(itemId))
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async dislikedCount(itemId) {
+    return await this.redisClient.scardAsync(
+      keyBuilder.itemDislikedBySet(itemId)
+    );
   }
 
-  allLikedFor(userId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .smembersAsync(keyBuilder.userLikedSet(userId))
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async allLikedFor(userId) {
+    return await this.redisClient.smembersAsync(
+      keyBuilder.userLikedSet(userId)
+    );
   }
 
-  allDislikedFor(userId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .smembersAsync(keyBuilder.userDislikedSet(userId))
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async allDislikedFor(userId) {
+    return await this.redisClient.smembersAsync(
+      keyBuilder.userDislikedSet(userId)
+    );
   }
 
-  allWatchedFor(userId) {
-    return new Promise(resolve => {
-      this.redisClient
-        .sunionAsync(
-          keyBuilder.userLikedSet(userId),
-          keyBuilder.userDislikedSet(userId)
-        )
-        .then(results => {
-          resolve(results);
-        });
-    });
+  async allWatchedFor(userId) {
+    return await this.redisClient.sunionAsync(
+      keyBuilder.userLikedSet(userId),
+      keyBuilder.userDislikedSet(userId)
+    );
   }
 }
 
