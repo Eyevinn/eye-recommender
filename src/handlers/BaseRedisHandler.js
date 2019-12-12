@@ -1,6 +1,6 @@
 const keyBuilder = require("../helpers/keyBuilder");
 const config = require("../helpers/config");
-const _ = require("underscore");
+const utilities = require("../helpers/utilities");
 const async = require("async");
 
 class BaseRedisHandler {
@@ -109,13 +109,13 @@ class BaseRedisHandler {
       keyBuilder.userDislikedSet(userId)
     );
     if (userRatedItemIds.length > 0) {
-      itemLikeDislikeKeys = _.map(userRatedItemIds, (itemId, key) => {
+      itemLikeDislikeKeys = userRatedItemIds.map(itemId => {
         itemLiked = keyBuilder.itemLikedBySet(itemId);
         itemDisliked = keyBuilder.itemDislikedBySet(itemId);
         return [itemLiked, itemDisliked];
       });
     }
-    itemLikeDislikeKeys = _.flatten(itemLikeDislikeKeys);
+    itemLikeDislikeKeys = utilities.flatten(itemLikeDislikeKeys);
     const otherUserIdsWhoRated = await this.redisClient.sunionAsync(
       itemLikeDislikeKeys
     );
@@ -181,10 +181,10 @@ class BaseRedisHandler {
           0,
           config.nearestNeighbors - 1,
           (err, leastSimilarUserIds) => {
-            _.each(mostSimilarUserIds, (usrId, key) => {
+            mostSimilarUserIds.forEach(usrId => {
               setsToUnion.push(keyBuilder.userLikedSet(usrId));
             });
-            _.each(leastSimilarUserIds, (usrId, key) => {
+            leastSimilarUserIds.forEach(usrId => {
               setsToUnion.push(keyBuilder.userDislikedSet(usrId));
             });
             if (setsToUnion.length > 0) {
