@@ -1,10 +1,10 @@
-eyeRecommender
+EyeRecommender
 ===
 
 Heavily inspired by [recommendationRaccoon](https://github.com/guymorita/recommendationRaccoon/).
 
 A simple similarity based recommendation engine and NPM module built on top of Node.js and Redis.
-The engine uses the [Jaccard coefficient](https://en.wikipedia.org/wiki/Jaccard_index) to determine the similarity between users and nearest neighbors to create recommendations.
+The engine uses the [Jaccard coefficient](https://en.wikipedia.org/wiki/Jaccard_index) to determine the similarity between users and [k-nearest neighbors](https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm) to create recommendations.
 
 ## Requirements
 
@@ -14,7 +14,7 @@ The engine uses the [Jaccard coefficient](https://en.wikipedia.org/wiki/Jaccard_
 ## Installation
 
 ``` bash
-npm install eyeRecommender
+npm install @eyevinn/eye-recommender
 ```
 
 ## Quickstart
@@ -23,7 +23,7 @@ eyeRecommender keeps track of the ratings and recommendations from your users. I
 
 #### Install eyeRecommender:
 ``` bash
-npm install eyeRecommender
+npm install @eyevinn/eye-recommender
 ```
 
 #### Setup Redis:
@@ -31,14 +31,14 @@ npm install eyeRecommender
 The configuration is defaulted to run against a local Redis instance.
 If you want to use a remote instance, you can set the following settings in your environment
 
-- eyeRecommender_REDIS_URL
-- eyeRecommender_REDIS_PORT
-- eyeRecommender_REDIS_AUTH
+- EyeRecommender_REDIS_URL
+- EyeRecommender_REDIS_PORT
+- EyeRecommender_REDIS_AUTH
 
 #### Example:
 
 ```js
-const eyeRecommender = require("eyeRecommender");
+const eyeRecommender = require("@eyevinn/eye-recommender");
 
 (async () => {
   await eyeRecommender.input.like("Emilia", "The Holiday");
@@ -142,10 +142,3 @@ When combined with hiredis, redis can get/set at ~40,000 operations/second using
 ## Tech Stack
 
 eyeRecommender is written fully in Javascript. It utilizes the asyncronous, non-blocking features of Node.js for the core of app. The recommendations and ratings are stored in an intermediate data store called Redis which performs extremely well compared to database systems that write every change to disk before committing the transaction. Redis holds the entire dataset in memory. For the actual handling of the parallel asyncronous functions, eyeRecommender uses the async library for Node.js.
-
-## Links
-
-* Code: 'git clone git://github.com/guymorita/recommendationeyeRecommender.git'
-* NPM Module: 'https://npmjs.org/package/eyeRecommender'
-* Benchmark / Performance repo: 'https://github.com/guymorita/benchmark_eyeRecommender_movielens'
-* Demo / UI App repo: 'https://github.com/guymorita/Mosaic-Films---Recommendation-Engine-Demo'
