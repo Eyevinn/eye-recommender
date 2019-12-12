@@ -12,7 +12,7 @@ class BaseRedisHandler {
     await this.updateSimilarityFor(userId);
     await Promise.all([
       this.updateWilsonScore(itemId),
-      this.updateRecommendationsFor(userId, () => {})
+      this.updateRecommendationsFor(userId)
     ]);
   }
 
@@ -164,88 +164,71 @@ class BaseRedisHandler {
     return similarSum;
   }
 
-  updateRecommendationsFor(userId, cb) {
+  async updateRecommendationsFor(userId) {
     userId = String(userId);
     let setsToUnion = [];
     let scoreMap = [];
     const tempAllLikedSet = keyBuilder.tempAllLikedSet(userId);
     const similarityZSet = keyBuilder.similarityZSet(userId);
     const recommendedZSet = keyBuilder.recommendedZSet(userId);
-    this.redisClient.zrevrange(
+
+    const mostSimilarUserIds = await this.redisClient.zrevrangeAsync(
       similarityZSet,
       0,
-      config.nearestNeighbors - 1,
-      (err, mostSimilarUserIds) => {
-        this.redisClient.zrange(
-          similarityZSet,
-          0,
-          config.nearestNeighbors - 1,
-          (err, leastSimilarUserIds) => {
-            mostSimilarUserIds.forEach(usrId => {
-              setsToUnion.push(keyBuilder.userLikedSet(usrId));
-            });
-            leastSimilarUserIds.forEach(usrId => {
-              setsToUnion.push(keyBuilder.userDislikedSet(usrId));
-            });
-            if (setsToUnion.length > 0) {
-              setsToUnion.unshift(tempAllLikedSet);
-              this.redisClient.sunionstore(setsToUnion, err => {
-                this.redisClient.sdiff(
-                  tempAllLikedSet,
-                  keyBuilder.userLikedSet(userId),
-                  keyBuilder.userDislikedSet(userId),
-                  (err, notYetRatedItems) => {
-                    async.each(
-                      notYetRatedItems,
-                      async itemId => {
-                        const score = await this.predictFor(userId, itemId);
-                        scoreMap.push([score, itemId]);
-                      },
-                      err => {
-                        this.redisClient.del(recommendedZSet, err => {
-                          async.each(
-                            scoreMap,
-                            (scorePair, callback) => {
-                              this.redisClient.zadd(
-                                recommendedZSet,
-                                scorePair[0],
-                                scorePair[1],
-                                err => {
-                                  callback();
-                                }
-                              );
-                            },
-                            err => {
-                              this.redisClient.del(tempAllLikedSet, err => {
-                                this.redisClient.zcard(
-                                  recommendedZSet,
-                                  (err, length) => {
-                                    this.redisClient.zremrangebyrank(
-                                      recommendedZSet,
-                                      0,
-                                      length - config.numOfRecsStore - 1,
-                                      err => {
-                                        cb();
-                                      }
-                                    );
-                                  }
-                                );
-                              });
-                            }
-                          );
-                        });
-                      }
-                    );
-                  }
-                );
-              });
-            } else {
-              cb();
-            }
-          }
-        );
-      }
+      config.nearestNeighbors - 1
     );
+
+    const leastSimilarUserIds = await this.redisClient.zrangeAsync(
+      similarityZSet,
+      0,
+      config.nearestNeighbors - 1
+    );
+
+    mostSimilarUserIds.forEach(usrId => {
+      setsToUnion.push(keyBuilder.userLikedSet(usrId));
+    });
+    leastSimilarUserIds.forEach(usrId => {
+      setsToUnion.push(keyBuilder.userDislikedSet(usrId));
+    });
+
+    if (setsToUnion.length > 0) {
+      setsToUnion.unshift(tempAllLikedSet);
+      await this.redisClient.sunionstoreAsync(setsToUnion);
+      const notYetRatedItems = await this.redisClient.sdiffAsync(
+        tempAllLikedSet,
+        keyBuilder.userLikedSet(userId),
+        keyBuilder.userDislikedSet(userId)
+      );
+      async.each(
+        notYetRatedItems,
+        async itemId => {
+          const score = await this.predictFor(userId, itemId);
+          scoreMap.push([score, itemId]);
+        },
+        async () => {
+          await this.redisClient.delAsync(recommendedZSet);
+          async.each(
+            scoreMap,
+            async scorePair => {
+              await this.redisClient.zaddAsync(
+                recommendedZSet,
+                scorePair[0],
+                scorePair[1]
+              );
+            },
+            async () => {
+              await this.redisClient.delAsync(tempAllLikedSet);
+              const length = await this.redisClient.zcardAsync(recommendedZSet);
+              await this.redisClient.zremrangebyrankAsync(
+                recommendedZSet,
+                0,
+                length - config.numOfRecsStore - 1
+              );
+            }
+          );
+        }
+      );
+    }
   }
 
   async updateWilsonScore(itemId) {
