@@ -6,15 +6,15 @@ class InputHandler extends BaseRedisHandler {
   }
 
   like(userId, itemId) {
-    return super.changeRating({ userId, itemId, liked: true });
+    return super._changeRating({ userId, itemId, liked: true });
   }
 
   dislike(userId, itemId) {
-    return super.changeRating({ userId, itemId, liked: false });
+    return super._changeRating({ userId, itemId, liked: false });
   }
 
   unlike(userId, itemId) {
-    return super.changeRating({
+    return super._changeRating({
       userId,
       itemId,
       liked: true,
@@ -23,7 +23,7 @@ class InputHandler extends BaseRedisHandler {
   }
 
   undislike(userId, itemId) {
-    return super.changeRating({
+    return super._changeRating({
       userId,
       itemId,
       liked: false,

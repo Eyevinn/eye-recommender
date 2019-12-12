@@ -8,15 +8,15 @@ class BaseRedisHandler {
     this.redisClient = redisClient;
   }
 
-  async updateSequence(userId, itemId) {
-    await this.updateSimilarityFor(userId);
+  async _updateSequence(userId, itemId) {
+    await this._updateSimilarityFor(userId);
     await Promise.all([
-      this.updateWilsonScore(itemId),
-      this.updateRecommendationsFor(userId)
+      this._updateWilsonScore(itemId),
+      this._updateRecommendationsFor(userId)
     ]);
   }
 
-  async changeRating({
+  async _changeRating({
     userId,
     itemId,
     liked = undefined,
@@ -58,7 +58,7 @@ class BaseRedisHandler {
     const done = await this.redisClient.sismemberAsync(feelingItemSet, userId);
 
     if (updateRecommendations && done) {
-      await this.updateSequence(userId, itemId);
+      await this._updateSequence(userId, itemId);
     }
   }
 
@@ -71,7 +71,7 @@ class BaseRedisHandler {
    * @param {string} userId1
    * @param {string} userId2
    */
-  async jaccardCoefficient(userId1, userId2) {
+  async _jaccardCoefficient(userId1, userId2) {
     let similarity = 0;
     let finalJaccardScore = 0;
     let ratedInCommon = 0;
@@ -121,7 +121,7 @@ class BaseRedisHandler {
    *
    * @param {string} userId
    */
-  async updateSimilarityFor(userId) {
+  async _updateSimilarityFor(userId) {
     userId = String(userId);
     let itemLiked, itemDisliked, itemLikeDislikeKeys;
     const similarityZSet = keyBuilder.similarityZSet(userId);
@@ -148,7 +148,10 @@ class BaseRedisHandler {
       if (otherUserIdsWhoRated.length === 1 || userId === otherUserId) return;
       if (userId != otherUserId) {
         // get the similarities
-        const jaccardScore = await this.jaccardCoefficient(userId, otherUserId);
+        const jaccardScore = await this._jaccardCoefficient(
+          userId,
+          otherUserId
+        );
         // save as a list with similarity scores
         await this.redisClient.zaddAsync(
           similarityZSet,
@@ -159,7 +162,7 @@ class BaseRedisHandler {
     });
   }
 
-  async predictFor(userId, itemId) {
+  async _predictFor(userId, itemId) {
     userId = String(userId);
     itemId = String(itemId);
     let finalSimilaritySum = 0.0;
@@ -169,8 +172,8 @@ class BaseRedisHandler {
     const dislikedBySet = keyBuilder.itemDislikedBySet(itemId);
 
     const [result1, result2] = await Promise.all([
-      this.similaritySum(similarityZSet, likedBySet),
-      this.similaritySum(similarityZSet, dislikedBySet)
+      this._similaritySum(similarityZSet, likedBySet),
+      this._similaritySum(similarityZSet, dislikedBySet)
     ]);
     finalSimilaritySum = result1 - result2;
     const likedbyCount = await this.redisClient.scardAsync(likedBySet);
@@ -180,7 +183,7 @@ class BaseRedisHandler {
     return prediction;
   }
 
-  async similaritySum(simSet, compSet) {
+  async _similaritySum(simSet, compSet) {
     let similarSum = 0.0;
     const userIds = await this.redisClient.smembersAsync(compSet);
     async.each(userIds, async userId => {
@@ -198,7 +201,7 @@ class BaseRedisHandler {
    *
    * @param {string} userId
    */
-  async updateRecommendationsFor(userId) {
+  async _updateRecommendationsFor(userId) {
     userId = String(userId);
     let setsToUnion = [];
     let scoreMap = [];
@@ -238,7 +241,7 @@ class BaseRedisHandler {
       async.each(
         notYetRatedItems,
         async itemId => {
-          const score = await this.predictFor(userId, itemId);
+          const score = await this._predictFor(userId, itemId);
           scoreMap.push([score, itemId]);
         },
         async () => {
@@ -274,7 +277,7 @@ class BaseRedisHandler {
    *
    * @param {string} itemId
    */
-  async updateWilsonScore(itemId) {
+  async _updateWilsonScore(itemId) {
     const scoreboard = keyBuilder.scoreboardZSet();
     const likedBySet = keyBuilder.itemLikedBySet(itemId);
     const dislikedBySet = keyBuilder.itemDislikedBySet(itemId);
