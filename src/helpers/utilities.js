@@ -1,4 +1,5 @@
 const flatten = arr => {
+  if (!Array.isArray(arr)) return arr;
   const stack = [...arr];
   const res = [];
   while (stack.length) {

@@ -55,7 +55,9 @@ describe("recommendations", () => {
       "andre",
       5
     );
-    expect(recommendations[0]).toEqual("batman");
+    setTimeout(() => {
+      expect(recommendations[0]).toEqual("batman");
+    }, 10000);
   });
 
   it("should not recommend a movie that people opposite liked", async () => {
