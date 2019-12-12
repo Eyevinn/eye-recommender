@@ -123,7 +123,9 @@ class BaseRedisHandler {
    */
   async _updateSimilarityFor(userId) {
     userId = String(userId);
-    let itemLiked, itemDisliked, itemLikeDislikeKeys;
+    let itemLiked;
+    let itemDisliked;
+    let itemLikeDislikeKeys = [];
     const similarityZSet = keyBuilder.similarityZSet(userId);
 
     // create a set with all likes and dislikes for this user
