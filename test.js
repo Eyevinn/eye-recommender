@@ -61,7 +61,7 @@ const go = async () => {
 
   let anotherPersion =
     People[Math.floor(Math.random() * (People.length - 0) + 0)];
-  const recommendations = await eyeRecommender.statistics.recommendFor(
+  const recommendations = await eyeRecommender.statistics.recommendationsForUser(
     anotherPersion
   );
   console.log(`Recommendations for ${anotherPersion}`, recommendations);

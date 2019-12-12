@@ -18,7 +18,7 @@ describe("accurate recommendations", () => {
     ]);
   });
   it("should not have recommendations for malbery", async () => {
-    const recommendations = await eyeRecommender.statistics.recommendFor(
+    const recommendations = await eyeRecommender.statistics.recommendationsForUser(
       "malbery",
       5
     );
@@ -51,7 +51,7 @@ describe("recommendations", () => {
   });
 
   it("should recommend a movie if a similar user liked it", async () => {
-    const recommendations = await eyeRecommender.statistics.recommendFor(
+    const recommendations = await eyeRecommender.statistics.recommendationsForUser(
       "andre",
       5
     );
@@ -61,7 +61,7 @@ describe("recommendations", () => {
   });
 
   it("should not recommend a movie that people opposite liked", async () => {
-    const recommendations = await eyeRecommender.statistics.recommendFor(
+    const recommendations = await eyeRecommender.statistics.recommendationsForUser(
       "andre",
       5
     );

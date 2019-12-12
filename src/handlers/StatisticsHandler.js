@@ -12,7 +12,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * @param {string} userId
    * @param {number} numberOfRecs
    */
-  async recommendFor(userId, numberOfRecs = 10) {
+  async recommendationsForUser(userId, numberOfRecs = 10) {
     return await this.redisClient.zrevrangeAsync(
       keyBuilder.recommendedZSet(userId),
       0,

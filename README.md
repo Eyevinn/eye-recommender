@@ -48,7 +48,7 @@ const eyeRecommender = require("@eyevinn/eye-recommender");
   await eyeRecommender.input.like("Erik", "The Holiday");
   await eyeRecommender.input.dislike("Erik", "The Grinch");
 
-  const recommendations = await eyeRecommender.statistics.recommendFor("Erik");
+  const recommendations = await eyeRecommender.statistics.recommendationsForUser("Erik");
   console.log("Recommendations for Erik", recommendations);
 })()
 ```
@@ -82,7 +82,7 @@ await eyeRecommender.input.undislike("userId", "itemId");
 
 ### Recommendations
 ``` js
-await eyeRecommender.statistics.recommendFor("userId", "numberOfRecs (default 10)");
+await eyeRecommender.statistics.recommendationsForUser("userId", "numberOfRecs (default 10)");
 await eyeRecommender.statistics.mostSimilarUsers("userId");
 await eyeRecommender.statistics.leastSimilarUsers("userId");
 ```
