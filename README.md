@@ -112,11 +112,11 @@ await eyeRecommender.statistics.dislikedCount("itemId");
  */
 
 // Get a list of items that the given user has liked
-await eyeRecommender.statistics.allLikedFor("userId");
+await eyeRecommender.statistics.allLikedForUser("userId");
 // Get a list of items that the given user has disliked
-await eyeRecommender.statistics.allDislikedFor("userId");
+await eyeRecommender.statistics.allDislikedForUser("userId");
 // Get a list of items that the given user has rated
-await eyeRecommender.statistics.allWatchedFor("userId");
+await eyeRecommender.statistics.allWatchedForUser("userId");
 ```
 
 

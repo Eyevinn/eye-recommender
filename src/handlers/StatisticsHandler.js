@@ -143,7 +143,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * Get a list of items that the given user has liked
    * @param {string} userId
    */
-  async allLikedFor(userId) {
+  async allLikedForUser(userId) {
     return await this.redisClient.smembersAsync(
       keyBuilder.userLikedSet(userId)
     );
@@ -153,7 +153,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * Get a list of items that the given user has disliked
    * @param {string} userId
    */
-  async allDislikedFor(userId) {
+  async allDislikedForUser(userId) {
     return await this.redisClient.smembersAsync(
       keyBuilder.userDislikedSet(userId)
     );
@@ -163,7 +163,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * Get a list of items that the given user has rated
    * @param {string} userId
    */
-  async allWatchedFor(userId) {
+  async allWatchedForUser(userId) {
     return await this.redisClient.sunionAsync(
       keyBuilder.userLikedSet(userId),
       keyBuilder.userDislikedSet(userId)
