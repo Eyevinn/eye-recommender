@@ -111,6 +111,14 @@ class BaseRedisHandler {
       results1.length + results2.length + results3.length + results4.length;
 
     finalJaccardScore = similarity / ratedInCommon;
+
+    // If we get full scored match, adjust randomly
+    // This way we get more randomization in nearest neighbors if multiple on max score
+    if (finalJaccardScore === 1) {
+      finalJaccardScore -= Math.random() * 0.00000000000001;
+    } else if (finalJaccardScore === -1) {
+      finalJaccardScore += Math.random() * 0.00000000000001;
+    }
     return finalJaccardScore;
   }
 
