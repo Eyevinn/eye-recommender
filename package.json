@@ -4,7 +4,7 @@
   "description": "A Recommendation Engine built on Node.js utilizing Redis",
   "version": "0.0.1",
   "scripts": {
-    "test": "jest -i"
+    "test": "jest -i --forceExit"
   },
   "main": "./index.js",
   "engines": {
