@@ -8,6 +8,7 @@ class EyeRecommender {
   }
 
   connect() {
+    this.redisClient = redisClient;
     this.input = new InputHandler({ redisClient });
     this.statistics = new StatisticsHandler({ redisClient });
   }
