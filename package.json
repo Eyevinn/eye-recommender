@@ -3,6 +3,13 @@
   "author": "Erik Hoffman",
   "description": "A Recommendation Engine built on Node.js utilizing Redis",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eyevinn/eye-recommender.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Eyevinn/eye-recommender/issues"
+  },
   "scripts": {
     "test": "jest -i --forceExit"
   },
