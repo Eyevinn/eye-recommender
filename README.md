@@ -1,8 +1,6 @@
 EyeRecommender
 ===
 
-Heavily inspired by [recommendationRaccoon](https://github.com/guymorita/recommendationRaccoon/).
-
 A simple similarity based recommendation engine and NPM module built on top of Node.js and Redis.
 The engine uses the [Jaccard coefficient](https://en.wikipedia.org/wiki/Jaccard_index) to determine the similarity between users and [k-nearest neighbors](https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm) to create recommendations.
 
@@ -41,20 +39,20 @@ If you want to use a remote instance, you can set the following settings in your
 const eyeRecommender = require("@eyevinn/eye-recommender");
 
 (async () => {
-  await eyeRecommender.input.like("Emilia", "The Holiday");
-  await eyeRecommender.input.like("Emilia", "Love Actually");
-  await eyeRecommender.input.like("Emilia", "The Grinch");
+  await eyeRecommender.input.like("Jane", "The Holiday");
+  await eyeRecommender.input.like("Jane", "Love Actually");
+  await eyeRecommender.input.like("Jane", "The Grinch");
 
-  await eyeRecommender.input.like("Erik", "The Holiday");
-  await eyeRecommender.input.dislike("Erik", "The Grinch");
+  await eyeRecommender.input.like("Carly", "The Holiday");
+  await eyeRecommender.input.dislike("Carly", "The Grinch");
 
-  const recommendations = await eyeRecommender.statistics.recommendationsForUser("Erik");
-  console.log("Recommendations for Erik", recommendations);
+  const recommendations = await eyeRecommender.statistics.recommendationsForUser("Carly");
+  console.log("Recommendations for Carly", recommendations);
 })()
 ```
 
 Outputs
-```Recommendations for Erik [ 'Love Actually' ]```
+```Recommendations for Carly [ 'Love Actually' ]```
 
 ## config
 
@@ -134,11 +132,4 @@ To deal with large user bases, it's essential to make optimizations that don't i
 
 If you've ever been to Amazon or another site with tons of reviews, you've probably ran into a sorted page of top ratings only to find some of the top items have only one review. The Wilson Score Interval at 95% calculates the chance that the 'real' fraction of positive ratings is at least x. This allows for you to leave off the items/products that have not been rated enough or have an abnormally high ratio. It's a great proxy for a 'best rated' list.
 
-### Redis
-
-When combined with hiredis, redis can get/set at ~40,000 operations/second using 50 concurrent connections without pipelining. In short, Redis is extremely fast at set math and is a natural fit for a recommendation engine of this scale. Redis is integral to many top companies such as Twitter which uses it for their Timeline (substituted Memcached).
-
-
-## Tech Stack
-
-eyeRecommender is written fully in Javascript. It utilizes the asyncronous, non-blocking features of Node.js for the core of app. The recommendations and ratings are stored in an intermediate data store called Redis which performs extremely well compared to database systems that write every change to disk before committing the transaction. Redis holds the entire dataset in memory. For the actual handling of the parallel asyncronous functions, eyeRecommender uses the async library for Node.js.
+#### Heavily inspired by [recommendationRaccoon](https://github.com/guymorita/recommendationRaccoon/).
