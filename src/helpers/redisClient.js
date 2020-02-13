@@ -1,15 +1,11 @@
-const redis = require("redis");
-const promisifyAll = require("util-promisifyall");
 const config = require("./config");
+const Redis = require("ioredis");
 
-promisifyAll(redis.RedisClient.prototype);
+const opts = {
+  port: config.redisPort,
+  host: config.redisUrl,
+  passowrd: config.redisAuth
+};
 
-const client = redis.createClient(config.redisPort, config.redisUrl);
-if (config.redisAuth) {
-  client.auth(config.redisAuth, err => {
-    if (err) {
-      throw err;
-    }
-  });
-}
+const client = new Redis(opts);
 module.exports = client;

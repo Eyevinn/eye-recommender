@@ -34,7 +34,7 @@ class BaseRedisHandler {
       ? keyBuilder.mostLiked()
       : keyBuilder.mostDisliked();
 
-    const ratingAlreadyExist = await this.redisClient.sismemberAsync(
+    const ratingAlreadyExist = await this.redisClient.sismember(
       feelingItemSet,
       userId
     );
@@ -48,14 +48,14 @@ class BaseRedisHandler {
     }
 
     (await removeRating)
-      ? await this.redisClient.sremAsync(feelingUserSet, itemId)
-      : await this.redisClient.saddAsync(feelingUserSet, itemId);
+      ? await this.redisClient.srem(feelingUserSet, itemId)
+      : await this.redisClient.sadd(feelingUserSet, itemId);
 
     (await removeRating)
-      ? await this.redisClient.sremAsync(feelingItemSet, userId)
-      : await this.redisClient.saddAsync(feelingItemSet, userId);
+      ? await this.redisClient.srem(feelingItemSet, userId)
+      : await this.redisClient.sadd(feelingItemSet, userId);
 
-    const done = await this.redisClient.sismemberAsync(feelingItemSet, userId);
+    const done = await this.redisClient.sismember(feelingItemSet, userId);
 
     if (updateRecommendations && done) {
       await this._updateSequence(userId, itemId);
@@ -82,22 +82,22 @@ class BaseRedisHandler {
     const user2DislikedSet = keyBuilder.userDislikedSet(userId2);
 
     // common likes
-    const results1 = await this.redisClient.sinterAsync(
+    const results1 = await this.redisClient.sinter(
       user1LikedSet,
       user2LikedSet
     );
     // common dislikes
-    const results2 = await this.redisClient.sinterAsync(
+    const results2 = await this.redisClient.sinter(
       user1DislikedSet,
       user2DislikedSet
     );
     // disagreements where user 1 likes things user 2 dislikes
-    const results3 = await this.redisClient.sinterAsync(
+    const results3 = await this.redisClient.sinter(
       user1LikedSet,
       user2DislikedSet
     );
     // disagreements where user 1 dislikes things user 2 likes
-    const results4 = await this.redisClient.sinterAsync(
+    const results4 = await this.redisClient.sinter(
       user1DislikedSet,
       user2LikedSet
     );
@@ -137,7 +137,7 @@ class BaseRedisHandler {
     const similarityZSet = keyBuilder.similarityZSet(userId);
 
     // create a set with all likes and dislikes for this user
-    const userRatedItemIds = await this.redisClient.sunionAsync(
+    const userRatedItemIds = await this.redisClient.sunion(
       keyBuilder.userLikedSet(userId),
       keyBuilder.userDislikedSet(userId)
     );
@@ -151,7 +151,7 @@ class BaseRedisHandler {
     }
     itemLikeDislikeKeys = utilities.flatten(itemLikeDislikeKeys);
     // get all the other users who has rated the same assets
-    const otherUserIdsWhoRated = await this.redisClient.sunionAsync(
+    const otherUserIdsWhoRated = await this.redisClient.sunion(
       itemLikeDislikeKeys
     );
     async.each(otherUserIdsWhoRated, async otherUserId => {
@@ -163,7 +163,7 @@ class BaseRedisHandler {
           otherUserId
         );
         // save as a list with similarity scores
-        await this.redisClient.zaddAsync(
+        await this.redisClient.zadd(
           similarityZSet,
           jaccardScore,
           otherUserId
@@ -186,8 +186,8 @@ class BaseRedisHandler {
       this._similaritySum(similarityZSet, dislikedBySet)
     ]);
     finalSimilaritySum = result1 - result2;
-    const likedbyCount = await this.redisClient.scardAsync(likedBySet);
-    const dislikedByCount = await this.redisClient.scardAsync(dislikedBySet);
+    const likedbyCount = await this.redisClient.scard(likedBySet);
+    const dislikedByCount = await this.redisClient.scard(dislikedBySet);
     prediction =
       finalSimilaritySum / parseFloat(likedbyCount + dislikedByCount);
     return prediction;
@@ -195,9 +195,9 @@ class BaseRedisHandler {
 
   async _similaritySum(simSet, compSet) {
     let similarSum = 0.0;
-    const userIds = await this.redisClient.smembersAsync(compSet);
+    const userIds = await this.redisClient.smembers(compSet);
     async.each(userIds, async userId => {
-      const zScore = await this.redisClient.zscoreAsync(simSet, userId);
+      const zScore = await this.redisClient.zscore(simSet, userId);
       const newScore = parseFloat(zScore) || 0.0;
       similarSum += newScore;
     });
@@ -219,13 +219,13 @@ class BaseRedisHandler {
     const similarityZSet = keyBuilder.similarityZSet(userId);
     const recommendedZSet = keyBuilder.recommendedZSet(userId);
 
-    const mostSimilarUserIds = await this.redisClient.zrevrangeAsync(
+    const mostSimilarUserIds = await this.redisClient.zrevrange(
       similarityZSet,
       0,
       config.nearestNeighbors - 1
     );
 
-    const leastSimilarUserIds = await this.redisClient.zrangeAsync(
+    const leastSimilarUserIds = await this.redisClient.zrange(
       similarityZSet,
       0,
       config.nearestNeighbors - 1
@@ -240,8 +240,8 @@ class BaseRedisHandler {
 
     if (setsToUnion.length > 0) {
       setsToUnion.unshift(tempAllLikedSet);
-      await this.redisClient.sunionstoreAsync(setsToUnion);
-      const notYetRatedItems = await this.redisClient.sdiffAsync(
+      await this.redisClient.sunionstore(setsToUnion);
+      const notYetRatedItems = await this.redisClient.sdiff(
         tempAllLikedSet,
         keyBuilder.userLikedSet(userId),
         keyBuilder.userDislikedSet(userId)
@@ -256,20 +256,20 @@ class BaseRedisHandler {
         },
         async () => {
           // add these predictions to that users recommended set
-          await this.redisClient.delAsync(recommendedZSet);
+          await this.redisClient.del(recommendedZSet);
           async.each(
             scoreMap,
             async scorePair => {
-              await this.redisClient.zaddAsync(
+              await this.redisClient.zadd(
                 recommendedZSet,
                 scorePair[0],
                 scorePair[1]
               );
             },
             async () => {
-              await this.redisClient.delAsync(tempAllLikedSet);
-              const length = await this.redisClient.zcardAsync(recommendedZSet);
-              await this.redisClient.zremrangebyrankAsync(
+              await this.redisClient.del(tempAllLikedSet);
+              const length = await this.redisClient.zcard(recommendedZSet);
+              await this.redisClient.zremrangebyrank(
                 recommendedZSet,
                 0,
                 length - config.numOfRecsStore - 1
@@ -295,9 +295,9 @@ class BaseRedisHandler {
     const z = 1.96;
     let score;
     // getting the liked count for the item
-    const likedResults = await this.redisClient.scardAsync(likedBySet);
+    const likedResults = await this.redisClient.scard(likedBySet);
     // getting the disliked count for the item
-    const dislikedResults = await this.redisClient.scardAsync(dislikedBySet);
+    const dislikedResults = await this.redisClient.scard(dislikedBySet);
     // continue only if there are ratings
     const n = likedResults + dislikedResults;
     if (n > 0) {
@@ -316,7 +316,7 @@ class BaseRedisHandler {
         score = 0.0;
       }
       // add that score to the overall scoreboard. if that item already exists, the score will be updated.
-      await this.redisClient.zaddAsync(scoreboard, score, itemId);
+      await this.redisClient.zadd(scoreboard, score, itemId);
     }
   }
 }

@@ -79,6 +79,6 @@ const stats = async () => {
 };
 
 (async () => {
-  await eyeRecommender.redisClient.flushdbAsync();
+  await eyeRecommender.redisClient.flushdb();
   go();
 })();

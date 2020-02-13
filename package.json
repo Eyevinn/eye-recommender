@@ -24,8 +24,7 @@
   ],
   "dependencies": {
     "async": "^3.1.0",
-    "redis": "~2.6.x",
-    "util-promisifyall": "^1.0.6"
+    "ioredis": "^4.14.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.7.5",
