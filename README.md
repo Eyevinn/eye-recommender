@@ -133,3 +133,11 @@ To deal with large user bases, it's essential to make optimizations that don't i
 If you've ever been to Amazon or another site with tons of reviews, you've probably ran into a sorted page of top ratings only to find some of the top items have only one review. The Wilson Score Interval at 95% calculates the chance that the 'real' fraction of positive ratings is at least x. This allows for you to leave off the items/products that have not been rated enough or have an abnormally high ratio. It's a great proxy for a 'best rated' list.
 
 #### Heavily inspired by [recommendationRaccoon](https://github.com/guymorita/recommendationRaccoon/).
+
+## About Eyevinn Technology
+
+Eyevinn Technology is an independent consultant firm specialized in video and streaming. Independent in a way that we are not commercially tied to any platform or technology vendor.
+
+At Eyevinn, every software developer consultant has a dedicated budget reserved for open source development and contribution to the open source community. This give us room for innovation, team building and personal competence development. And also gives us as a company a way to contribute back to the open source community.
+
+Want to know more about Eyevinn and how it is to work here. Contact us at work@eyevinn.se!
