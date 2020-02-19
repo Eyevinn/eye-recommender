@@ -24,22 +24,14 @@ class StatisticsHandler extends BaseRedisHandler {
    * Get the items with the best ratings in general
    */
   async bestRated() {
-    return await this.redisClient.zrevrange(
-      keyBuilder.scoreboardZSet(),
-      0,
-      -1
-    );
+    return await this.redisClient.zrevrange(keyBuilder.scoreboardZSet(), 0, -1);
   }
 
   /**
    * Get the items with the worst ratings in general
    */
   async worstRated() {
-    return await this.redisClient.zrange(
-      keyBuilder.scoreboardZSet(),
-      0,
-      -1
-    );
+    return await this.redisClient.zrange(keyBuilder.scoreboardZSet(), 0, -1);
   }
 
   /**
@@ -68,11 +60,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * Get the most disliked assets
    */
   async mostDisliked() {
-    return await this.redisClient.zrevrange(
-      keyBuilder.mostDisliked(),
-      0,
-      -1
-    );
+    return await this.redisClient.zrevrange(keyBuilder.mostDisliked(), 0, -1);
   }
 
   /**
@@ -106,9 +94,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * @param {string} itemId
    */
   async likedBy(itemId) {
-    return await this.redisClient.smembers(
-      keyBuilder.itemLikedBySet(itemId)
-    );
+    return await this.redisClient.smembers(keyBuilder.itemLikedBySet(itemId));
   }
 
   /**
@@ -134,9 +120,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * @param {string} itemId
    */
   async dislikedCount(itemId) {
-    return await this.redisClient.scard(
-      keyBuilder.itemDislikedBySet(itemId)
-    );
+    return await this.redisClient.scard(keyBuilder.itemDislikedBySet(itemId));
   }
 
   /**
@@ -144,9 +128,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * @param {string} userId
    */
   async allLikedForUser(userId) {
-    return await this.redisClient.smembers(
-      keyBuilder.userLikedSet(userId)
-    );
+    return await this.redisClient.smembers(keyBuilder.userLikedSet(userId));
   }
 
   /**
@@ -154,9 +136,7 @@ class StatisticsHandler extends BaseRedisHandler {
    * @param {string} userId
    */
   async allDislikedForUser(userId) {
-    return await this.redisClient.smembers(
-      keyBuilder.userDislikedSet(userId)
-    );
+    return await this.redisClient.smembers(keyBuilder.userDislikedSet(userId));
   }
 
   /**

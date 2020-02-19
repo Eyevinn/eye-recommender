@@ -163,11 +163,7 @@ class BaseRedisHandler {
           otherUserId
         );
         // save as a list with similarity scores
-        await this.redisClient.zadd(
-          similarityZSet,
-          jaccardScore,
-          otherUserId
-        );
+        await this.redisClient.zadd(similarityZSet, jaccardScore, otherUserId);
       }
     });
   }
